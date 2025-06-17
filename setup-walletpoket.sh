@@ -1,299 +1,199 @@
 #!/data/data/com.termux/files/usr/bin/bash
-
-==================================================
-
-🚀 FINAL AUTO-SETUP SCRIPT: EwalletPoket SUPER ✅
-
-==================================================
-
---- [1] Konfigurasi Global ---
-
-REPO_NAME="EwalletPoket" GITHUB_USERNAME="AswadXenOS" GITHUB_TOKEN="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" PROJECT_DIR="$HOME/$REPO_NAME" BOT_TOKEN="7731637512:AAG6MnAuHWkSQjvIQ3XQpKuS_k5fy8vAgt8"
-
---- [2] Keperluan Termux ---
-
-pkg update -y && pkg upgrade -y pkg install -y git nodejs nano termux-api python npm i -g pm2
-
---- [3] Cipta Projek & Direktori ---
-
-rm -rf $PROJECT_DIR mkdir -p $PROJECT_DIR/{backend,cli,frontend/public,frontend/src/{pages,components},logs,telegram-bot,plugins} cd $PROJECT_DIR
-
---- [4] Fail .env & .gitignore ---
-
-echo "PORT=3000 JWT_SECRET=aswad-ewallet-secret ADMIN_USERNAME=aswad ADMIN_PASSWORD=aswad123 TELEGRAM_BOT_TOKEN=$BOT_TOKEN" > .env
-
-echo "node_modules/ .env logs/" > .gitignore
-
---- [5] Backend API ---
-
-cat > backend/server.js <<'EOF' // Express backend: server.js const express = require('express'); const cors = require('cors'); const dotenv = require('dotenv'); const jwt = require('jsonwebtoken'); const fs = require('fs'); const bcrypt = require('bcryptjs'); dotenv.config();
-
+ 
+# ===============================================
+ 
+# 🚀 EwalletPoket Auto Setup (Penuh & Lengkap)
+ 
+# ===============================================
+ 
+# [1] Konfigurasi Asas
+ 
+export PROJECT="EwalletPoket" export GITHUB_USERNAME="AswadXenOS" export GITHUB_TOKEN="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" export DB_FILE="shared/ewallet.db"
+ 
+# [2] Cipta folder & klon repo
+ 
+cd $HOME rm -rf $PROJECT mkdir -p $PROJECT && cd $PROJECT
+ 
+git init GIT_REPO="[https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com/$GITHUB_USERNAME/$PROJECT.git](https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com/$GITHUB_USERNAME/$PROJECT.git)" git remote add origin $GIT_REPO
+ 
+# [3] Struktur direktori utama
+ 
+mkdir -p auth-service/src/{controllers,models,middleware,routes} mkdir -p user-service/src/{controllers,models,routes} mkdir -p wallet-service/src/{controllers,models,routes} mkdir -p shared frontend/src/pages telegram-bot scripts
+ 
+touch shared/db.js shared/verifyToken.js
+ 
+# [4] Fail utama
+ 
+cat > auth-service/server.js <<'EOF' const express = require('express'); const cors = require('cors'); const jwt = require('jsonwebtoken'); const bcrypt = require('bcryptjs'); const app = express(); app.use(cors()); app.use(express.json()); const users = [{ username: 'aswad', password: bcrypt.hashSync('aswad123'), wallet: 1000 }];
+ 
+app.post('/auth/login', (req, res) => { const { username, password } = req.body; const user = users.find(u => u.username === username); if (user && bcrypt.compareSync(password, user.password)) { const token = jwt.sign({ username }, 'secret'); return res.json({ token }); } res.status(401).json({ error: 'Invalid credentials' }); });
+ 
+app.listen(3000, () => console.log('🔐 Auth running on 3000')); EOF
+ 
+cat > user-service/server.js <<'EOF' const express = require('express'); const cors = require('cors'); const app = express(); app.use(cors()); app.use(express.json()); const users = [{ username: 'aswad', wallet: 1000 }];
+ 
+app.get('/users', (req, res) => { res.json(users); });
+ 
+app.listen(3001, () => console.log('👤 User running on 3001')); EOF
+ 
+cat > wallet-service/server.js <<'EOF' const express = require('express'); const cors = require('cors'); const app = express(); app.use(cors()); app.use(express.json()); const users = [{ username: 'aswad', wallet: 1000 }];
+ 
+app.post('/wallet/transfer', (req, res) => { const { to, amount } = req.body; const sender = users.find(u => u.username === 'aswad'); const receiver = users.find(u => u.username === to); if (sender.wallet >= amount && receiver) { sender.wallet -= amount; receiver.wallet += amount; return res.json({ message: 'Transfer berjaya' }); } res.status(400).json({ message: 'Gagal transfer' }); });
+ 
+app.listen(3002, () => console.log('💰 Wallet running on 3002')); EOF
+ 
+# [5] Frontend setup (React + QR Pay)
+ 
+cd $HOME/$PROJECT/frontend npm create vite@latest . -- --template react --force npm install --legacy-peer-deps npm install axios react-router-dom qrcode.react
+ 
+cat > src/index.css <<'EOF' body { font-family: sans-serif; margin: 0; background: #f1f5f9; } input, button { width: 100%; margin: 0.5rem 0; padding: 0.6rem; border-radius: 6px; border: 1px solid #ccc; } button { background: #007bff; color: white; font-weight: bold; cursor: pointer; } EOF
+ 
+cat > src/main.jsx <<'EOF' import React from 'react'; import ReactDOM from 'react-dom/client'; import { BrowserRouter, Routes, Route } from 'react-router-dom'; import LoginPage from './pages/LoginPage'; import DashboardPage from './pages/DashboardPage'; import './index.css';
+ 
+ReactDOM.createRoot(document.getElementById('root')).render(       ); EOF
+ 
+cat > src/pages/LoginPage.jsx <<'EOF' import React, { useState } from 'react'; import { useNavigate } from 'react-router-dom';
+ 
+export default function LoginPage() { const [username, setUsername] = useState(''); const [password, setPassword] = useState(''); const navigate = useNavigate();
+ 
+const login = async () => { const res = await fetch('[http://localhost:3000/auth/login](http://localhost:3000/auth/login)', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) }); if (res.ok) { const data = await res.json(); localStorage.setItem('token', data.token); localStorage.setItem('username', username); navigate('/dashboard'); } else alert('Login gagal'); };
+ 
+return (
+ 
+## Login
+ 
+<input placeholder="Username" onChange={e => setUsername(e.target.value)} /> <input placeholder="Password" onChange={e => setPassword(e.target.value)} /> Login ); } EOF
+ 
+cat > src/pages/DashboardPage.jsx <<'EOF' import React, { useEffect, useState } from 'react'; import QRCode from 'qrcode.react';
+ 
+export default function DashboardPage() { const [user, setUser] = useState(null); const [to, setTo] = useState(''); const [amount, setAmount] = useState(''); const token = localStorage.getItem('token');
+ 
+const fetchUser = async () => { const res = await fetch('[http://localhost:3001/users](http://localhost:3001/users)'); const data = await res.json(); const username = localStorage.getItem('username'); setUser(data.find(u => u.username === username)); };
+ 
+const transfer = async () => { const res = await fetch('[http://localhost:3002/wallet/transfer](http://localhost:3002/wallet/transfer)', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ to, amount: Number(amount) }) }); const data = await res.json(); alert(data.message); fetchUser(); };
+ 
+useEffect(() => { if (token) fetchUser(); }, []);
+ 
+return (
+ 
+## Welcome {user?.username}
+ 
+Wallet: RM {user?.wallet} <QRCode value={user?.username || ''} />
+ 
+### Transfer Duit
+ 
+<input placeholder="Kepada (username)" onChange={e => setTo(e.target.value)} /> <input placeholder="Jumlah RM" type="number" onChange={e => setAmount(e.target.value)} /> Transfer ); } EOF
+ 
+# [6] Jalankan semua servis
+ 
+cd $HOME/$PROJECT termux-open-url "[http://localhost:5173](http://localhost:5173)"
+ 
+pm2 start auth-service/server.js --name auth -f pm2 start user-service/server.js --name user -f pm2 start wallet-service/server.js --name wallet -f cd frontend && pm2 start npm -- run dev --name frontend -f
+ 
+# [7] Git push ke repo
+ 
+cd $HOME/$PROJECT git add . git commit -m "🚀 Init full EwalletPoket setup" git branch -M main git push -f -u origin main
+ 
+termux-notification --title "✅ Setup Siap" --content "Buka frontend di browser: [http://localhost:5173](http://localhost:5173)" echo "🎉 SEMUA SELESAI. UI: [http://localhost:5173](http://localhost:5173)" #!/data/data/com.termux/files/usr/bin/bash
+ 
+# =====================================================
+ 
+# 🚀 EwalletPoket Auto Setup (Penuh & Lengkap)
+ 
+# =====================================================
+ 
+# [1] Konfigurasi Asas
+ 
+export PROJECT="EwalletPoket" export GITHUB_USERNAME="AswadXenOS" export GITHUB_TOKEN="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" export DB_FILE="shared/ewallet.db"
+ 
+# [2] Cipta folder & klon repo
+ 
+cd $HOME rm -rf $PROJECT mkdir -p $PROJECT && cd $PROJECT
+ 
+git init GIT_REPO="[https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com/$GITHUB_USERNAME/$PROJECT.git](https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com/$GITHUB_USERNAME/$PROJECT.git)" git remote add origin $GIT_REPO
+ 
+# [3] Struktur direktori utama
+ 
+mkdir -p auth-service/src/{controllers,models,middleware,routes} mkdir -p user-service/src/{controllers,models,routes} mkdir -p wallet-service/src/{controllers,models,routes} mkdir -p shared frontend/src/{pages,components,styles} mkdir -p telegram-bot scripts
+ 
+touch shared/db.js shared/verifyToken.js
+ 
+# [4] Fail utama: Backend minimal
+ 
+cat > auth-service/server.js <<'EOF' const express = require('express'); const cors = require('cors'); const jwt = require('jsonwebtoken'); const bcrypt = require('bcryptjs');
+ 
 const app = express(); app.use(cors()); app.use(express.json());
-
-const USERS_FILE = './backend/users.json'; const LOG_FILE = './logs/audit.log';
-
-function readUsers() { return JSON.parse(fs.readFileSync(USERS_FILE)); }
-
-function writeUsers(users) { fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2)); }
-
-function logAction(action) { const logs = JSON.parse(fs.readFileSync(LOG_FILE)); logs.push({ action, time: new Date().toISOString() }); fs.writeFileSync(LOG_FILE, JSON.stringify(logs, null, 2)); }
-
-function verifyToken(req, res, next) { const auth = req.headers.authorization; if (!auth) return res.status(401).json({ message: 'Token required' }); try { const decoded = jwt.verify(auth.split(' ')[1], process.env.JWT_SECRET); req.user = decoded; next(); } catch { return res.status(403).json({ message: 'Invalid token' }); } }
-
-app.post('/auth/register', (req, res) => { const { username, password } = req.body; const users = readUsers(); if (users.find(u => u.username === username)) { return res.status(400).json({ message: 'User exists' }); } const hashed = bcrypt.hashSync(password, 8); users.push({ username, password: hashed, wallet: 100 }); writeUsers(users); logAction(Register: ${username}); res.json({ message: 'Registered' }); });
-
-app.post('/auth/login', (req, res) => { const { username, password } = req.body; const users = readUsers(); const user = users.find(u => u.username === username); if (!user || !bcrypt.compareSync(password, user.password)) { return res.status(401).json({ message: 'Login failed' }); } const token = jwt.sign({ username }, process.env.JWT_SECRET); logAction(Login: ${username}); res.json({ token }); });
-
-app.post('/wallet/transfer', verifyToken, (req, res) => { const { to, amount } = req.body; const users = readUsers(); const sender = users.find(u => u.username === req.user.username); const receiver = users.find(u => u.username === to);
-
-if (!receiver) return res.status(404).json({ message: 'Receiver not found' }); if (sender.wallet < amount) return res.status(400).json({ message: 'Insufficient balance' });
-
-sender.wallet -= amount; receiver.wallet += amount; writeUsers(users); logAction(Transfer ${amount} from ${sender.username} to ${receiver.username}); res.json({ message: 'Transferred', from: sender.username, to: receiver.username, amount }); });
-
-app.get('/users', verifyToken, (req, res) => { const users = readUsers().map(u => ({ username: u.username, wallet: u.wallet })); res.json(users); });
-
-app.listen(process.env.PORT, () => console.log(🚀 API listening on port ${process.env.PORT})); EOF
-
---- [6] Dummy Users & Log ---
-
-echo '[{"username":"aswad","password":"$2a$08$aswad","wallet":1000}]' > backend/users.json echo '[]' > logs/audit.log
-
---- [7] Telegram Bot ---
-
-cat > telegram-bot/bot.js <<EOF require('dotenv').config(); const TelegramBot = require('node-telegram-bot-api'); const fs = require('fs');
-
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
-
-bot.onText(//wallet/, (msg) => { const userId = msg.from.username || msg.from.first_name; const users = JSON.parse(fs.readFileSync('./backend/users.json')); const user = users.find(u => u.username === userId); if (user) { bot.sendMessage(msg.chat.id, 💰 Wallet ${user.username}: RM${user.wallet}); } else { bot.sendMessage(msg.chat.id, ❌ Akaun ${userId} tiada dalam sistem.); } }); EOF
-
---- [8] CLI SuperAdmin ---
-
-cat > cli/superadmin-cli.js <<EOF #!/usr/bin/env node console.log("🛠️ Superadmin CLI ready. Tambah command di sini."); EOF chmod +x cli/superadmin-cli.js
-
---- [9] package.json & Install ---
-
-cat > package.json <<EOF { "name": "$REPO_NAME", "version": "1.0.0", "main": "backend/server.js", "scripts": { "start": "node backend/server.js", "bot": "node telegram-bot/bot.js", "cli": "node cli/superadmin-cli.js" }, "dependencies": { "express": "^4.18.2", "cors": "^2.8.5", "dotenv": "^16.3.1", "jsonwebtoken": "^9.0.2", "bcryptjs": "^2.4.3", "node-telegram-bot-api": "^0.61.0" } } EOF npm install
-
---- [10] start.sh & Shortcut ---
-
-cat > start.sh <<EOF #!/data/data/com.termux/files/usr/bin/bash pm2 start backend/server.js --name api -f pm2 start telegram-bot/bot.js --name bot -f pm2 save EOF chmod +x start.sh
-
-mkdir -p ~/.shortcuts ln -sf $PROJECT_DIR/start.sh ~/.shortcuts/EwalletStart termux-reload-settings
-
---- [11] GitHub Push ---
-
-git init git config user.name "$GITHUB_USERNAME" git config user.email "aswad@example.com" git remote add origin https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com/$GITHUB_USERNAME/$REPO_NAME.git git add . git commit -m "🚀 Auto init EwalletPoket" git branch -M main git push -u origin main
-
---- [12] Run All ---
-
-bash start.sh sleep 2 curl -s http://localhost:3000 && echo "✅ API READY"
-
---- [13] Notifikasi ---
-
-termux-notification --title "✅ Siap EwalletPoket" --content "Sistem ewallet siap 100%" || echo "🔔 Notification not supported"
-
-✅ Done!
-
-echo "🟢 SIAP! Cuba login dengan:" echo 'curl -X POST http://localhost:3000/auth/login -H "Content-Type: application/json" -d '{"username":"aswad","password":"aswad123"}'
-
-
-#!/data/data/com.termux/files/usr/bin/bash
-# ================================================
-# 🚀 FINAL AUTO-SETUP SCRIPT: EwalletPoket SUPER ✅
-# ================================================
-
-REPO_NAME="EwalletPoket"
-GITHUB_USERNAME="AswadXenOS"
-GITHUB_TOKEN="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"
-PROJECT_DIR="$HOME/$REPO_NAME"
-BOT_TOKEN="7731637512:AAG6MnAuHWkSQjvIQ3XQpKuS_k5fy8vAgt8"
-
-# [1] Install keperluan
-pkg update -y && pkg upgrade -y
-pkg install -y git nodejs nano openssh termux-api jq
-npm i -g pm2
-
-# [2] Struktur projek
-mkdir -p $PROJECT_DIR/{backend/{routes,controllers,models,middleware},frontend,cli,telegram-bot,logs,plugins}
-cd $PROJECT_DIR
-
-# [3] Config .env & .gitignore
-echo "PORT=3000
-JWT_SECRET=aswad-ewallet-secret
-ADMIN_USERNAME=aswad
-ADMIN_PASSWORD=aswad123
-TELEGRAM_BOT_TOKEN=$BOT_TOKEN" > .env
-echo "node_modules/
-.env
-logs/" > .gitignore
-
-# [4] Backend API
-cat > backend/server.js <<'EOF'
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const jwt = require('jsonwebtoken');
-const fs = require('fs');
-const bcrypt = require('bcryptjs');
-dotenv.config();
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-const USERS_FILE = './backend/users.json';
-const LOG_FILE = './logs/audit.log';
-
-function readUsers() {
-  return JSON.parse(fs.readFileSync(USERS_FILE));
-}
-function writeUsers(users) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
-}
-function logAction(action) {
-  const logs = JSON.parse(fs.readFileSync(LOG_FILE));
-  logs.push({ action, time: new Date().toISOString() });
-  fs.writeFileSync(LOG_FILE, JSON.stringify(logs, null, 2));
-}
-function verifyToken(req, res, next) {
-  const auth = req.headers.authorization;
-  if (!auth) return res.status(401).json({ message: 'Token required' });
-  try {
-    const decoded = jwt.verify(auth.split(' ')[1], process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch {
-    return res.status(403).json({ message: 'Invalid token' });
-  }
-}
-
-app.post('/auth/register', (req, res) => {
-  const { username, password } = req.body;
-  const users = readUsers();
-  if (users.find(u => u.username === username)) {
-    return res.status(400).json({ message: 'User exists' });
-  }
-  const hashed = bcrypt.hashSync(password, 8);
-  users.push({ username, password: hashed, wallet: 100 });
-  writeUsers(users);
-  logAction(`Register: ${username}`);
-  res.json({ message: 'Registered' });
-});
-
-app.post('/auth/login', (req, res) => {
-  const { username, password } = req.body;
-  const users = readUsers();
-  const user = users.find(u => u.username === username);
-  if (!user || !bcrypt.compareSync(password, user.password)) {
-    return res.status(401).json({ message: 'Login failed' });
-  }
-  const token = jwt.sign({ username }, process.env.JWT_SECRET);
-  logAction(`Login: ${username}`);
-  res.json({ token });
-});
-
-app.post('/wallet/transfer', verifyToken, (req, res) => {
-  const { to, amount } = req.body;
-  const users = readUsers();
-  const sender = users.find(u => u.username === req.user.username);
-  const receiver = users.find(u => u.username === to);
-  if (!receiver) return res.status(404).json({ message: 'Receiver not found' });
-  if (sender.wallet < amount) return res.status(400).json({ message: 'Insufficient balance' });
-  sender.wallet -= amount;
-  receiver.wallet += amount;
-  writeUsers(users);
-  logAction(`Transfer ${amount} from ${sender.username} to ${receiver.username}`);
-  res.json({ message: 'Transferred', from: sender.username, to: receiver.username, amount });
-});
-
-app.get('/users', verifyToken, (req, res) => {
-  const users = readUsers().map(u => ({ username: u.username, wallet: u.wallet }));
-  res.json(users);
-});
-
-app.get('/', (req, res) => res.send('✅ EwalletPoket API OK'));
-app.listen(process.env.PORT, () => console.log(`🚀 Server running on port ${process.env.PORT}`));
-EOF
-
-# [5] Dummy Users & Log
-echo '[]' > logs/audit.log
-echo '[{"username":"aswad","password":"$2a$08$aswad","wallet":1000}]' > backend/users.json
-
-# [6] Telegram Bot
-cat > telegram-bot/bot.js <<EOF
-require('dotenv').config();
-const TelegramBot = require('node-telegram-bot-api');
-const fs = require('fs');
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
-
-bot.onText(/\/wallet/, (msg) => {
-  const userId = msg.from.username || msg.from.first_name;
-  const users = JSON.parse(fs.readFileSync('./backend/users.json'));
-  const user = users.find(u => u.username === userId);
-  if (user) {
-    bot.sendMessage(msg.chat.id, \`💰 Wallet \${user.username}: RM\${user.wallet}\`);
-  } else {
-    bot.sendMessage(msg.chat.id, \`❌ Akaun \${userId} tiada dalam sistem.\`);
-  }
-});
-EOF
-
-# [7] CLI Placeholder
-echo '#!/usr/bin/env node
-console.log("🛠️ Superadmin CLI ready. Tambah command di sini.");' > cli/superadmin-cli.js
-chmod +x cli/superadmin-cli.js
-
-# [8] package.json + install
-cat > package.json <<EOF
-{
-  "name": "$REPO_NAME",
-  "version": "1.0.0",
-  "main": "backend/server.js",
-  "scripts": {
-    "start": "node backend/server.js",
-    "bot": "node telegram-bot/bot.js",
-    "cli": "node cli/superadmin-cli.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "jsonwebtoken": "^9.0.2",
-    "bcryptjs": "^2.4.3",
-    "node-telegram-bot-api": "^0.61.0"
-  }
-}
-EOF
-npm install
-
-# [9] Auto start.sh
-echo '#!/data/data/com.termux/files/usr/bin/bash
-pm2 start backend/server.js --name api
-pm2 start telegram-bot/bot.js --name bot
-pm2 save' > start.sh
-chmod +x start.sh
-
-mkdir -p ~/.shortcuts
-ln -sf $PROJECT_DIR/start.sh ~/.shortcuts/EwalletStart
-termux-reload-settings
-
-# [10] GitHub push
-git init
-git config user.name "$GITHUB_USERNAME"
-git config user.email "aswad@example.com"
-git remote remove origin 2>/dev/null
-git remote add origin https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com/$GITHUB_USERNAME/$REPO_NAME.git
-git add .
-git commit -m "🚀 Auto init EwalletPoket"
-git branch -M main
-git push -u origin main
-
-# [11] Run API
-bash start.sh
-sleep 2
-curl -s http://localhost:3000 && echo "✅ API READY"
-
-# [12] Notifikasi
-termux-notification --title "✅ EwalletPoket Siap" --content "Sistem EwalletPoket telah siap 100%"
-
-echo "🟢 Login Test:"
-echo 'curl -X POST http://localhost:3000/auth/login -H "Content-Type: application/json" -d '\''{"username":"aswad","password":"aswad123"}'\'''
+ 
+const users = [{ username: 'aswad', password: bcrypt.hashSync('aswad123'), wallet: 1000 }];
+ 
+app.post('/auth/login', (req, res) => { const { username, password } = req.body; const user = users.find(u => u.username === username); if (user && bcrypt.compareSync(password, user.password)) { const token = jwt.sign({ username }, 'secret'); return res.json({ token }); } res.status(401).json({ error: 'Invalid credentials' }); });
+ 
+app.listen(3000, () => console.log('🔐 Auth running on 3000')); EOF
+ 
+cat > user-service/server.js <<'EOF' const express = require('express'); const cors = require('cors'); const app = express(); app.use(cors()); app.use(express.json());
+ 
+const users = [{ username: 'aswad', wallet: 1000 }];
+ 
+app.get('/users', (req, res) => { res.json(users); });
+ 
+app.listen(3001, () => console.log('👤 User running on 3001')); EOF
+ 
+cat > wallet-service/server.js <<'EOF' const express = require('express'); const cors = require('cors'); const app = express(); app.use(cors()); app.use(express.json());
+ 
+const users = [{ username: 'aswad', wallet: 1000 }, { username: 'x', wallet: 100 }];
+ 
+app.post('/wallet/transfer', (req, res) => { const { to, amount } = req.body; const sender = users.find(u => u.username === 'aswad'); const receiver = users.find(u => u.username === to); if (sender.wallet >= amount && receiver) { sender.wallet -= amount; receiver.wallet += amount; return res.json({ message: 'Transfer berjaya' }); } res.status(400).json({ message: 'Gagal transfer' }); });
+ 
+app.listen(3002, () => console.log('💰 Wallet running on 3002')); EOF
+ 
+# [5] Frontend setup (React + Vite + QR)
+ 
+cd $HOME/$PROJECT/frontend npm create vite@latest . -- --template react --force npm install --legacy-peer-deps npm install axios react-router-dom qrcode.react
+ 
+cat > src/index.css <<'EOF' body { font-family: sans-serif; margin: 0; background: #f1f5f9; } input, button { width: 100%; margin: 0.5rem 0; padding: 0.6rem; border-radius: 6px; border: 1px solid #ccc; } button { background: #007bff; color: white; font-weight: bold; cursor: pointer; } EOF
+ 
+cat > src/main.jsx <<'EOF' import React from 'react'; import ReactDOM from 'react-dom/client'; import { BrowserRouter, Routes, Route } from 'react-router-dom'; import LoginPage from './pages/LoginPage'; import DashboardPage from './pages/DashboardPage'; import './index.css';
+ 
+ReactDOM.createRoot(document.getElementById('root')).render(   <Route path="/" element={} /> <Route path="/dashboard" element={} />   ); EOF
+ 
+cat > src/pages/LoginPage.jsx <<'EOF' import React, { useState } from 'react'; import { useNavigate } from 'react-router-dom';
+ 
+export default function LoginPage() { const [username, setUsername] = useState(''); const [password, setPassword] = useState(''); const navigate = useNavigate();
+ 
+const login = async () => { const res = await fetch('[http://localhost:3000/auth/login](http://localhost:3000/auth/login)', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }), }); if (res.ok) { const data = await res.json(); localStorage.setItem('token', data.token); localStorage.setItem('username', username); navigate('/dashboard'); } else alert('Login gagal'); };
+ 
+return ( <> 
+## Login
+ <input placeholder="Username" onChange={e => setUsername(e.target.value)} /> <input placeholder="Password" onChange={e => setPassword(e.target.value)} type="password" /> Login </> ); } EOF
+ 
+cat > src/pages/DashboardPage.jsx <<'EOF' import React, { useEffect, useState } from 'react'; import QRCode from 'qrcode.react';
+ 
+export default function DashboardPage() { const [user, setUser] = useState(null); const [to, setTo] = useState(''); const [amount, setAmount] = useState(''); const token = localStorage.getItem('token');
+ 
+const fetchUser = async () => { const res = await fetch('[http://localhost:3001/users](http://localhost:3001/users)'); const data = await res.json(); const username = localStorage.getItem('username'); setUser(data.find(u => u.username === username)); };
+ 
+const transfer = async () => { const res = await fetch('[http://localhost:3002/wallet/transfer](http://localhost:3002/wallet/transfer)', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, }, body: JSON.stringify({ to, amount: Number(amount) }), }); const data = await res.json(); alert(data.message); fetchUser(); };
+ 
+useEffect(() => { if (token) fetchUser(); }, []);
+ 
+return ( <> 
+## Welcome {user?.username}
+ 
+Wallet: RM {user?.wallet}
+ <QRCode value={user?.username || ''} /> 
+### Transfer Duit
+ <input placeholder="Kepada (username)" onChange={e => setTo(e.target.value)} /> <input placeholder="Jumlah RM" type="number" onChange={e => setAmount(e.target.value)} /> Transfer </> ); } EOF
+ 
+# [6] Jalankan semua servis
+ 
+cd $HOME/$PROJECT
+ 
+pm2 start auth-service/server.js --name auth -f pm2 start user-service/server.js --name user -f pm2 start wallet-service/server.js --name wallet -f cd frontend && pm2 start npm -- run dev --name frontend -f
+ 
+# [7] Git push ke repo
+ 
+cd $HOME/$PROJECT git add . git commit -m "🚀 Init full EwalletPoket setup" git branch -M main git push -f -u origin main
+ 
+# [8] Notifikasi
+ 
+termux-notification --title "✅ Setup Siap" --content "Buka frontend di browser: [http://localhost:5173](http://localhost:5173)" echo "🎉 SEMUA SELESAI. UI: [http://localhost:5173](http://localhost:5173)"
